@@ -37,9 +37,9 @@ export function GameMenu({
   return (
     <div
       dir="rtl"
-      className="absolute inset-0 z-20 flex flex-col overflow-hidden bg-gradient-to-b from-violet-950 via-fuchsia-950 to-black"
+      className="absolute inset-0 z-20 bg-gradient-to-b from-violet-950 via-fuchsia-950 to-black"
     >
-      {/* Animated cyber background */}
+      {/* Animated cyber background — sits behind, doesn't scroll */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-20 top-20 h-64 w-64 rounded-full bg-cyan-500/20 blur-3xl animate-pulse" />
         <div
@@ -95,103 +95,107 @@ export function GameMenu({
         </svg>
       </div>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pb-8 pt-6">
-        {/* Title block */}
-        <div className="mb-1 text-center">
-          <div className="text-[10px] font-bold uppercase tracking-[0.4em] text-cyan-300/70">
-            ENDLESS RUNNER
-          </div>
-          <h1 className="mt-0.5 font-black tracking-tight">
-            <span className="block bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500 bg-clip-text text-6xl text-transparent drop-shadow-[0_8px_30px_rgba(251,191,36,0.5)] leading-none">
-              TLV
-            </span>
-            <span className="-mt-1 block bg-gradient-to-br from-fuchsia-400 via-rose-400 to-cyan-300 bg-clip-text text-4xl text-transparent leading-none">
-              RUSH
-            </span>
-          </h1>
-          <div className="mt-2 text-sm font-bold text-white">רוץ. התחמק. שרוד את תל אביב.</div>
-          <div className="mt-1 max-w-[260px] mx-auto text-[11px] leading-snug text-white/55">
-            שליחים, קורקינטים, מזגנים וניאון — העיר שלא עוצרת מחכה לך.
-          </div>
-        </div>
-
-        {/* Hero character preview */}
-        <div className="mt-3 mb-3">
-          <HeroCharacter skinId={selectedSkin} />
-        </div>
-
-        {/* Stats strip */}
-        <div className="mb-3 flex items-center gap-2">
-          <Pill icon="🪙" label="מטבעות" value={walletCoins} />
-          {best > 0 && <Pill icon="🏆" label="שיא" value={best} />}
-        </div>
-
-        {/* Play button — big and glowy */}
-        <button
-          onClick={onPlay}
-          className="group relative mb-3 overflow-hidden rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500 px-16 py-4 text-xl font-black text-black shadow-[0_16px_60px_rgba(251,191,36,0.65)] transition active:scale-95"
-        >
-          <span className="relative z-10">▶ התחל ריצה</span>
-          <span className="pointer-events-none absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-active:translate-x-[100%]" />
-        </button>
-
-        {/* Character card */}
-        <button
-          onClick={onChangeCharacter}
-          className="mb-3 flex w-full max-w-[320px] items-center gap-3 rounded-2xl border border-white/15 bg-black/40 px-4 py-2.5 text-right backdrop-blur-sm active:scale-[0.98]"
-        >
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl ring-1 ring-white/20"
-            style={{
-              background: `linear-gradient(135deg, ${skin.colors.shirt}, ${skin.colors.accent})`,
-            }}
-          >
-            {skinEmoji(selectedSkin)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[10px] uppercase tracking-wider text-white/45">הדמות שלך</div>
-            <div className="text-sm font-black text-white truncate">{skin.name}</div>
-            <div className="text-[11px] text-amber-300/90 truncate">{skin.perkLabel}</div>
-          </div>
-          <div className="text-[11px] font-bold text-cyan-300/80">החלף ›</div>
-        </button>
-
-        {/* Daily Hook */}
-        <div className="mb-3 w-full max-w-[320px] overflow-hidden rounded-2xl border border-fuchsia-400/40 bg-gradient-to-br from-fuchsia-600/25 to-violet-700/20 px-4 py-2.5">
-          <div className="mb-1.5 flex items-center justify-between">
-            <div className="rounded-full bg-fuchsia-400/30 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-100">
-              🌟 אתגר היום
+      <div className="relative z-10 h-full overflow-y-auto">
+        <div className="flex min-h-full flex-col items-center justify-start px-5 pb-10 pt-6">
+          {/* Title block */}
+          <div className="mb-1 text-center">
+            <div className="text-[10px] font-bold uppercase tracking-[0.4em] text-cyan-300/70">
+              ENDLESS RUNNER
             </div>
-            <div className="text-xs font-black text-amber-300">🪙 {missions.challenge.reward}</div>
+            <h1 className="mt-0.5 font-black tracking-tight">
+              <span className="block bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500 bg-clip-text text-6xl text-transparent drop-shadow-[0_8px_30px_rgba(251,191,36,0.5)] leading-none">
+                TLV
+              </span>
+              <span className="-mt-1 block bg-gradient-to-br from-fuchsia-400 via-rose-400 to-cyan-300 bg-clip-text text-4xl text-transparent leading-none">
+                RUSH
+              </span>
+            </h1>
+            <div className="mt-2 text-sm font-bold text-white">רוץ. התחמק. שרוד את תל אביב.</div>
+            <div className="mt-1 max-w-[260px] mx-auto text-[11px] leading-snug text-white/55">
+              שליחים, קורקינטים, מזגנים וניאון — העיר שלא עוצרת מחכה לך.
+            </div>
           </div>
-          <div className="text-sm font-bold text-white truncate">{challengeDef.label}</div>
-          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black/40">
+
+          {/* Hero character preview */}
+          <div className="mt-3 mb-3">
+            <HeroCharacter skinId={selectedSkin} />
+          </div>
+
+          {/* Stats strip */}
+          <div className="mb-3 flex items-center gap-2">
+            <Pill icon="🪙" label="מטבעות" value={walletCoins} />
+            {best > 0 && <Pill icon="🏆" label="שיא" value={best} />}
+          </div>
+
+          {/* Play button — big and glowy */}
+          <button
+            onClick={onPlay}
+            className="group relative mb-3 overflow-hidden rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500 px-16 py-4 text-xl font-black text-black shadow-[0_16px_60px_rgba(251,191,36,0.65)] transition active:scale-95"
+          >
+            <span className="relative z-10">▶ התחל ריצה</span>
+            <span className="pointer-events-none absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-active:translate-x-[100%]" />
+          </button>
+
+          {/* Character card */}
+          <button
+            onClick={onChangeCharacter}
+            className="mb-3 flex w-full max-w-[320px] items-center gap-3 rounded-2xl border border-white/15 bg-black/40 px-4 py-2.5 text-right backdrop-blur-sm active:scale-[0.98]"
+          >
             <div
-              className="h-full rounded-full bg-gradient-to-r from-fuchsia-400 via-rose-400 to-amber-300 transition-all"
-              style={{ width: `${challengePct}%` }}
-            />
-          </div>
-          <div className="mt-1 flex items-center justify-between text-[11px] text-white/65">
-            <span>
-              {Math.floor(challengeProgress)} / {challengeDef.target} {challengeDef.unit}
-            </span>
-            {challengeDone && !missions.challengeClaimed && (
-              <span className="font-bold text-amber-300">לחץ &quot;משימות&quot; לאיסוף</span>
-            )}
-            {missions.challengeClaimed && (
-              <span className="font-bold text-emerald-400">✓ נאסף</span>
-            )}
-          </div>
-        </div>
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl ring-1 ring-white/20"
+              style={{
+                background: `linear-gradient(135deg, ${skin.colors.shirt}, ${skin.colors.accent})`,
+              }}
+            >
+              {skinEmoji(selectedSkin)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] uppercase tracking-wider text-white/45">הדמות שלך</div>
+              <div className="text-sm font-black text-white truncate">{skin.name}</div>
+              <div className="text-[11px] text-amber-300/90 truncate">{skin.perkLabel}</div>
+            </div>
+            <div className="text-[11px] font-bold text-cyan-300/80">החלף ›</div>
+          </button>
 
-        {/* Secondary nav cards */}
-        <div className="mb-3 grid w-full max-w-[320px] grid-cols-3 gap-2">
-          <NavCard onClick={onShop} icon="🛍" label="חנות" />
-          <NavCard onClick={onMissions} icon="🎯" label="משימות" />
-          <NavCard onClick={onLegend} icon="❓" label="איך משחקים" />
-        </div>
+          {/* Daily Hook */}
+          <div className="mb-3 w-full max-w-[320px] overflow-hidden rounded-2xl border border-fuchsia-400/40 bg-gradient-to-br from-fuchsia-600/25 to-violet-700/20 px-4 py-2.5">
+            <div className="mb-1.5 flex items-center justify-between">
+              <div className="rounded-full bg-fuchsia-400/30 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-100">
+                🌟 אתגר היום
+              </div>
+              <div className="text-xs font-black text-amber-300">
+                🪙 {missions.challenge.reward}
+              </div>
+            </div>
+            <div className="text-sm font-bold text-white truncate">{challengeDef.label}</div>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black/40">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-fuchsia-400 via-rose-400 to-amber-300 transition-all"
+                style={{ width: `${challengePct}%` }}
+              />
+            </div>
+            <div className="mt-1 flex items-center justify-between text-[11px] text-white/65">
+              <span>
+                {Math.floor(challengeProgress)} / {challengeDef.target} {challengeDef.unit}
+              </span>
+              {challengeDone && !missions.challengeClaimed && (
+                <span className="font-bold text-amber-300">לחץ &quot;משימות&quot; לאיסוף</span>
+              )}
+              {missions.challengeClaimed && (
+                <span className="font-bold text-emerald-400">✓ נאסף</span>
+              )}
+            </div>
+          </div>
 
-        <SettingsToggles className="mb-2" />
+          {/* Secondary nav cards */}
+          <div className="mb-3 grid w-full max-w-[320px] grid-cols-3 gap-2">
+            <NavCard onClick={onShop} icon="🛍" label="חנות" />
+            <NavCard onClick={onMissions} icon="🎯" label="משימות" />
+            <NavCard onClick={onLegend} icon="❓" label="איך משחקים" />
+          </div>
+
+          <SettingsToggles className="mb-2" />
+        </div>
       </div>
     </div>
   );

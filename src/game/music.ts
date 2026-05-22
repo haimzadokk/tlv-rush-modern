@@ -51,7 +51,9 @@ function whenRunning(c: AudioContext, cb: () => void) {
   };
   const onChange = () => fire();
   c.addEventListener("statechange", onChange);
-  c.resume().then(fire).catch(() => {});
+  c.resume()
+    .then(fire)
+    .catch(() => {});
 }
 
 let masterGain: GainNode | null = null;

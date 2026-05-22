@@ -2489,14 +2489,11 @@ export function Game() {
     startMusic();
   }, []);
 
-  // From the menu Start button: detour to character select on first ever run.
+  // From the menu Start button: always detour through character select so the
+  // player can re-pick (or just confirm) before each run.
   const handlePlayPressed = useCallback(() => {
-    if (!characterChosen) {
-      setView("character");
-    } else {
-      actuallyStartRun();
-    }
-  }, [characterChosen, actuallyStartRun]);
+    setView("character");
+  }, []);
 
   const openCharacterSelect = useCallback(() => {
     setView("character");
