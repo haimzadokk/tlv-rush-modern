@@ -5,6 +5,8 @@ export const storageKeys = {
   coins: `${PREFIX}-coins`,
   ownedSkins: `${PREFIX}-owned-skins`,
   selectedSkin: `${PREFIX}-selected-skin`,
+  selectedCharacter: `${PREFIX}-selected-character`,
+  characterChosen: `${PREFIX}-character-chosen`,
   missions: `${PREFIX}-missions`,
   tutorialDone: `${PREFIX}-tutorial-done`,
   sound: `${PREFIX}-sound`,

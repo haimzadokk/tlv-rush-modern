@@ -1,4 +1,4 @@
-import { SKINS, type SkinId } from "@/game/skins";
+import { SKINS, skinEmoji, type SkinId } from "@/game/skins";
 
 type Props = {
   coins: number;
@@ -7,17 +7,6 @@ type Props = {
   onBuy: (id: SkinId) => void;
   onSelect: (id: SkinId) => void;
   onClose: () => void;
-};
-
-const SKIN_EMOJI: Record<SkinId, string> = {
-  tlv_runner: "🏃",
-  hightechist: "💻",
-  surfer: "🏄",
-  tourist: "📸",
-  barista: "☕",
-  delivery: "🛵",
-  cyber: "🤖",
-  king: "👑",
 };
 
 export function Shop({ coins, ownedSkins, selectedSkin, onBuy, onSelect, onClose }: Props) {
@@ -64,7 +53,7 @@ export function Shop({ coins, ownedSkins, selectedSkin, onBuy, onSelect, onClose
                   className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-3xl shadow-inner ring-2 ring-white/10"
                   style={{ background: accentColor }}
                 >
-                  {SKIN_EMOJI[s.id]}
+                  {skinEmoji(s.id)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-white truncate">{s.name}</div>

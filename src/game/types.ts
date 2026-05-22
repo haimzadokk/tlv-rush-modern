@@ -40,6 +40,16 @@ export type Pickup = {
   lateralOffset?: number;
 };
 
+export type LandmarkKind =
+  | "azrieli_round"
+  | "azrieli_triangle"
+  | "azrieli_square"
+  | "migdal_shalom"
+  | "dizengoff_center"
+  | "menorah_hall"
+  | "kirya"
+  | "yafo_clock";
+
 export type Building = {
   side: -1 | 1;
   z: number;
@@ -50,6 +60,10 @@ export type Building = {
   seed: number;
   /** Pre-computed lit-window pattern, frozen at spawn. */
   windowSeed: number;
+  /** If set, render as a named iconic landmark instead of a generic building. */
+  landmark?: LandmarkKind;
+  /** If true, the pass-by toast has already been fired. */
+  announced?: boolean;
 };
 
 export type FloatText = {
@@ -80,4 +94,4 @@ export type RunStats = {
   zoneId: string;
 };
 
-export type GameView = "menu" | "playing" | "paused" | "over" | "shop" | "missions";
+export type GameView = "menu" | "character" | "playing" | "paused" | "over" | "shop" | "missions";

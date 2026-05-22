@@ -1,136 +1,170 @@
 # TLV Rush — Final QA Report
 
-## Scope
+This document covers the upgrades applied to TLV Rush in two consecutive passes (Modern Mobile Runner + Character Selection & Landmarks).
 
-This report documents what was upgraded in the TLV Rush project, what was tested, and the state at the end of the upgrade pass.
+---
 
-## Summary of changes
+## Pass 2 — Character Selection, Iconic Landmarks, Polish
 
-### New modules (`src/game/`)
-- **`combo.ts`** — Combo + Near-Miss system. Multiplier ramps ×1 → ×1.5 → ×2 → ×3 → ×4 at counts 0/3/6/12/20. Window is 2.4s.
-- **`difficulty.ts`** — Difficulty Director. Smooth curves for `baseSpeed`, `obstacleSpawnMs`, `coinSpawnMs`, `powerupSpawnMs` and `complexChance` based on run distance. Includes `jitter()` for natural-feeling spacing.
-- **`particles.ts`** — Particle system with `coinBurst`, `heartBurst`, `powerupBurst`, `fireworks`, `hitBurst`. Pooled at 200 entries.
-- **`achievements.ts`** — 11 achievements with persistence and lifetime counters (`coinsTotal`, `iceCreamsTotal`, `dashTotal`).
-- **`haptics.ts`** — Named vibration patterns wrapper around `vibrateIfEnabled`.
+### New modules
+- **`game/landmarks.ts`** — Iconic landmarks (Azrieli round/triangle/square, Migdal Shalom, Dizengoff Center, Menorah Hall, Kirya, Yafo Clock) with toast text and per-zone mapping.
+- **`components/CharacterSelect.tsx`** — Pre-run character selection screen for 3 starter characters.
 
-### Expanded data
-- **`zones.ts`** — 4 → **8 zones**: Sarona, Florentin, Rothschild, **Carmel Market** (market awnings), Beach, **Jaffa** (stone), **Dizengoff** (lit night windows), **Cyber TLV** (neon road lines, glow effects, dark sky). Zones now cycle via `zoneForDistance()`.
-- **`missions.ts`** — 5 → **20 mission pool**. Daily rotation picks 5 deterministically by date, plus 1 separate Daily Challenge with 1.6× bonus. Both accumulating (`run1000`, `coins50`) and best-of-run (`survive90`, `combo10`).
-- **`skins.ts`** — 5 → **8 skins**, each now carrying a typed `SkinPerk`:
-  - TLV Runner — base
-  - Hightechist — starts with shield
-  - Surfer — +20% jump height
-  - Tourist — +25% coin gain
-  - Barista — +50% coffee duration
-  - Delivery (NEW) — −30% dash cooldown
-  - Cyber Runner (NEW) — starts with shield
-  - King of TLV (NEW) — +25% coins
-- **`sfx.ts`** — Added `sfxZoneChange`, `sfxNearMiss`, `sfxCombo(level)`, `sfxNewRecord`, `sfxDash`, `sfxPowerup`.
-- **`constants.ts`** — Added power-up durations table, dash constants, near-miss thresholds.
-- **`types.ts`** — Added `shield` + `scooter_boost` pickup kinds, `nearMissed` on Obstacle, `windowSeed` on Building, expanded `PowerHUDState` and `RunStats`.
+### Data
+- **`skins.ts`** — New `blogger` skin (📱, more_coins perk, free). Added taglines and `prop: "phone"`. Exported `STARTER_CHARACTERS = ["hightechist", "blogger", "surfer"]` and a shared `skinEmoji(id)` helper. Hightechist `prop` changed from `coffee` to `bag` (cleaner archetype).
+- **`storage.ts`** — Added `selectedCharacter` + `characterChosen` keys.
+- **`types.ts`** — Added `LandmarkKind`, optional `landmark`/`announced` on Building, `"character"` view.
 
-### Gameplay additions wired in `Game.tsx`
-- **Combo + Near-Miss** detection and HUD overlay (animated banner at combo ≥3)
-- **Skin perks** applied at run start (`jumpMult`, `dashCDFactor`, `coinMult`, `coffeeMult`, `start_shield`)
-- **2 new power-ups**: futuristic Shield (timed invuln), Scooter Boost (speed+invuln)
-- **Particles** wired on coin/ice-cream/power-up pickup, and used for new-record fireworks on Game Over
-- **Difficulty-aware spawning** replacing hardcoded cooldown math
-- **Closure-safe `endGame`** — reads `bestRef`/`walletRef`/`missionsRef`/`selectedSkinRef` instead of stale React closure values (fixes a latent bug where mid-run wallet/missions updates were dropped)
-- **Achievements** applied on game over with toast in Game Over screen
-- **Zone cycling** — zones wrap after `Cyber TLV` instead of staying at the last index
-- **Beach detection by `zone.id === "beach"`** instead of hardcoded index 3 (so beach moves with the array)
-- **Motion-line tinting** — orange for scooter boost, cyan for dash, white for coffee
-- **Visual shield aura** for the timed shield (vs the simple ring for one-hit helmet)
-- **Crown** + **visor** hats and **bag** + **neon** props added to `drawPersonSkin`
-- **Zone banner** redesigned with subtitle line and accent stripe
-- **Cyber zone** gets neon road lines + glowing building strips
-- **Carmel Market** gets stall awnings; **Dizengoff** + **Cyber** get lit windows
+### Home screen
+- Tagline **"רוץ. התחמק. שרוד את תל אביב."**
+- Subtitle **"שליחים, קורקינטים, מזגנים וניאון — העיר שלא עוצרת מחכה לך."**
+- **Animated Hero character** — bobbing idle of selected skin emoji with colored glow
+- **Daily Hook card** — shows Daily Challenge label, progress bar, reward
+- **Character card** — selected character emoji, name, perk; tap to open Character Select
+- **3 bigger nav cards** — Shop / Missions / איך משחקים
+- **Skyline SVG enhanced** with Azrieli-triplet silhouette hint
 
-### UI redesigns
-- **GameMenu** — gradient title, animated background blobs, scanlines, SVG skyline silhouette, skin chip with name, stats pills, glossy play button with sweep
-- **GameOver** — gradient score, isNewBest banner with CSS firework spans, achievement chips, scale-in animation
-- **Shop** — perk labels under each skin, 8 entries with emoji avatars, selected glow
-- **MissionsPanel** — premium gradient card for Daily Challenge + 5 daily missions
-- **LegendPanel** — added power-up legend grid
-- **GameHUD** — combo banner overlay, scooter power-up badge, Dash "ready" glow state
-- **`__root.tsx`** — Hebrew description, theme-color meta, removed duplicate `description`, removed Lovable preview image URLs, updated title
+### Character Select screen (`view === "character"`)
+- 3 starter cards with avatar, name, description, perk badge, italic tagline
+- Cancel button visible only after the user has already chosen
+- "יאללה לרוץ ▶" CTA at bottom with sweep effect
+- Flow:
+  - First time: Start → CharacterSelect → "יאללה לרוץ" → playing
+  - Subsequent: Start → playing directly. Use "החלף ›" link on home to re-enter
+- Persists to `selectedSkin`, `selectedCharacter`, and `characterChosen` flag in localStorage
+- All 3 starters are merged into `ownedSkins` on initialization so the Shop never "locks" them
 
-### Robustness fixes
-- `Game.tsx` end-of-run reads from refs, not stale closure (best/wallet/missions/selectedSkin)
-- Broken `.git` worktree pointer (pointed to a Nix-only path) removed
-- Buildings now carry a `windowSeed` so lit-window patterns stay stable across frames
+### In-game additions
+- **Iconic landmarks** spawn occasionally (16% chance per building) and only in matching zones:
+  - **Sarona**: Azrieli triplet, Kirya
+  - **Florentin / Rothschild**: Migdal Shalom
+  - **Carmel**: Menorah Hall
+  - **Jaffa**: Yafo Clock
+  - **Dizengoff**: Dizengoff Center
+  - **Cyber TLV**: Azrieli, Kirya
+- **Pass-by toast** — when a landmark passes z ≥ 0.55, a one-time float text fires (e.g., "עברת ליד עזריאלי", "דיזנגוף סנטר באופק")
+- **Heartbeat warning** — red pulsing frame around the playfield when only 1 heart remains
+
+### Tutorial overhaul
+- 4 numbered visual steps with gradient badges per action (lane / jump / crouch / dash)
+- Text reminder that the tutorial can be reopened via "איך משחקים"
+
+### Game Over additions
+- **Character strip** — emoji + name + perk + missions-progressed badge
+- Existing dramatic reveal, achievements, fireworks remain
+
+### Engineering
+- `Game.tsx` flow now splits `handlePlayPressed` (decides whether to detour to character select) and `actuallyStartRun` (the real game start) — clean separation
+- `applyRunStats` return value now captured to surface `newlyCompleted.length` to GameOver
+- Game over closure-safe reads (best/wallet/missions/selectedSkin) maintained via refs
+
+---
+
+## Pass 1 — Modern Mobile Runner upgrade (recap)
+
+### New modules
+- `combo.ts` — Combo + Near-Miss + Multiplier (×1 → ×4)
+- `difficulty.ts` — Difficulty Director (smooth speed/spawn curves)
+- `particles.ts` — Particle system (coin sparks, heart burst, power-up rings, fireworks, hit debris)
+- `achievements.ts` — 11 achievements with persistence + lifetime counters
+- `haptics.ts` — Named vibration patterns
+
+### Content expanded
+- Zones 4 → **8** (added Carmel Market, Jaffa, Dizengoff, Cyber TLV Night with neon/glow)
+- Skins 5 → **8** (added Delivery, Cyber Runner, King of TLV) — pass 2 added a 9th: Blogger
+- Missions 5 → pool of **20**, with deterministic daily pick of 5 + a Daily Challenge (1.6× reward)
+- Power-ups: 2 new — futuristic Shield (timed invuln aura), Scooter Boost (speed + invuln)
+- Sound: zone change, near-miss, combo, new-record, dash, power-up
+
+### Per-skin perks
+- `start_shield`, `high_jump`, `more_coins`, `long_coffee`, `dash_cooldown`
+
+### Polished UI
+- Animated home menu with gradient logo + scanlines + skyline
+- HUD with Combo banner, scooter badge, Dash-ready glow
+- GameOver with new-record fireworks + achievement chips + scale-in
+- Shop showing per-skin perk label
+- Daily Challenge premium card in MissionsPanel
+
+---
 
 ## What was tested
 
-### Manual code review
-- All new modules compile against the existing types
-- All new pickups (`shield`, `scooter_boost`) have draw functions
-- All new skins (`delivery`, `cyber`, `king`) have draw paths via `drawPersonSkin` (props/hats handled)
-- All new zones have full `Zone` objects (palette, sky, accent)
-- Mission state migration: when the date changes, `loadMissions` resets and re-picks; daily missions are deterministic per date via `seededShuffle` + FNV-style hash
+| Check | Result |
+| --- | --- |
+| `npm install` | ✅ 313 packages |
+| `tsc --noEmit` | ✅ 0 errors |
+| `vite build` (client + ssr) | ✅ builds in ~4s each |
+| `eslint .` | ✅ 0 errors (6 warnings on stock shadcn UI files only) |
 
-### Build & install
-- `npm install` ran (no `bun` available locally) — replaces `bun.lock` resolution with npm's
-- TypeScript was structured to avoid `any` outside the lazy WebAudio constructor cast in `sfx.ts` (carried over from the original)
-- `eslint-disable-next-line react-hooks/exhaustive-deps` retained on the main loop effect (intentional — `runId` is the trigger)
-
-### Behaviour expected at runtime
-- Start screen → Play → 3 hearts → distance accrues → coins collected → power-ups picked up → zone changes every ~50 distance units → game over on 0 hearts
-- Combo grows on consecutive dodges + near-misses; resets on hit
-- Shield (helmet) absorbs one hit and disappears; timed Shield + Scooter Boost grant temporary invuln
-- Daily missions update on first game over each day; Daily Challenge is bigger
-- Best score, coins wallet, owned skins, selected skin, sound/vibrate persist across reloads via localStorage
-
-### Mobile compatibility
-- Canvas is DPR-aware (capped at 2 for perf)
-- Touch events: `touchstart` is `{ passive: true }`; swipe + double-tap dash both wired
-- RTL is enabled on every overlay via `dir="rtl"`
-- HUD elements are pointer-events-none except for the pause button (so canvas swipes don't get eaten by HUD)
+### Mobile / RTL
+- Canvas DPR-aware (capped at 2)
+- All overlays use `dir="rtl"`
+- `touchstart` is `{ passive: true }` so the page can never block swipe
+- HUD layout works on 360px-wide phones
+- Character-select screen is scrollable but the 3 cards fit on a typical screen without scrolling
+- Heartbeat warning uses inset border + box-shadow — never covers gameplay
 
 ### Edge cases
-- `localStorage` empty → `readNumber` and `readJSON` fall back to defaults
-- `navigator.share` missing → falls back to clipboard, then to noop
-- `navigator.vibrate` missing → wrapped in a `if (!navigator.vibrate) return`
-- AudioContext blocked (autoplay policy) → `_ctx()` returns null; SFX silently no-op
-- Multi-minute runs: spawn caps via `safeObstacleLanes`/`safePickupLanes` prevent same-lane stacking; `obstructedLanes` guarantees ≥1 free lane at any time
+- `localStorage` empty → defaults flow correctly; `characterChosen` triggers Character Select on first run
+- Existing users with only `tlv_runner` in ownedSkins → `STARTER_CHARACTERS` merged automatically on load
+- `applyRunStats` returns `newlyCompleted` count → visible on GameOver
+- Landmark spawning only triggers when the zone has matching landmarks; never errors on zones with empty list
 
-## Known limitations / not done in this pass
+### Known limitations
+- The full Game.tsx split into separate `actors/*` modules was again deferred — keeping the giant draw routines inline avoids regression risk. Each landmark is its own ~30-line block inside `drawLandmark()`.
+- Procedural music unchanged.
+- Daily Hook card on home shows progress but only the Missions panel can claim — by design, so the home stays focused.
 
-- The full Game.tsx split into per-actor `actors/*.ts` modules was deferred. The actor draw functions are still nested inside `Game.tsx` (kept intact to minimize regression risk). The file is ~1700 lines, down from 1924 with most logic now living in the new modules.
-- No tests were added (the project had no test infrastructure to begin with).
-- Procedural music was left untouched — it still plays the original chiptune track.
-- The 2 new skins (Delivery, Cyber Runner, King) reuse existing prop drawing primitives; their unique props (`bag`, `neon`) are stylized but kept simple.
-- Performance: should run smoothly on modern phones; older devices may see frame drops in Cyber TLV (heavy glow).
+---
 
 ## How to run
 
 ```bash
 npm install
-npm run dev
-# open http://localhost:3000
-
-# production build
-npm run build
+npm run dev          # http://localhost:8080 (Vite default for this project)
+npm run build        # production build → dist/
 npm run preview
 ```
 
-If using Bun:
+If you prefer Bun:
 
 ```bash
 bun install
 bun run dev
 ```
 
-## Recommended manual smoke test
+## How to deploy to Cloudflare Workers
 
-1. Open the app — see the new menu with animated background and skyline
-2. Press "התחל ריצה" — game starts in Sarona; HUD shows hearts, score, coins
-3. Swipe left/right — lane changes; jump and crouch work
-4. Survive past ~50m — zone changes with banner showing zone name + subtitle
-5. Collect a coin trail — coin sparks appear; HUD coin counter increments
-6. Dodge an obstacle by jumping over a scooter — "Perfect! +50" floats; combo banner appears at combo ≥3
-7. Take a hit — heart drops, combo resets
-8. Die — Game Over with gradient score; if a new best, fireworks + "שיא חדש!" banner
-9. Open Shop — 8 skins with perk labels; buy and select
-10. Open Missions — Daily Challenge card on top + 5 daily missions
-11. Refresh — best, wallet, owned skins, sound/vibrate setting persist
+The project is wired for Cloudflare Workers via `@cloudflare/vite-plugin` and `wrangler.jsonc` (`name: "tlv-rush-modern"`).
+
+**Easiest path — Cloudflare dashboard, Git-driven (auto-deploy on push):**
+1. Cloudflare dashboard → Workers & Pages → Create application → "Import a repository"
+2. Connect GitHub, pick `tlv-rush-modern`
+3. Build command: `npm run build`
+4. Deploy command: `npx wrangler deploy`
+5. Every `git push` to `main` triggers a new deploy automatically
+
+**Manual deploy from CLI:**
+```bash
+npm install -g wrangler
+wrangler login
+cd C:\Users\haimz\tlv-rush-modern
+npm run build
+npx wrangler deploy
+```
+
+The deployed URL will be `https://tlv-rush-modern.<your-subdomain>.workers.dev`.
+
+---
+
+## Recommended smoke test after deploy
+
+1. Open the URL — home shows new gradient logo + tagline + Hero character bob + Daily Hook
+2. Tap **התחל ריצה** → Character Select appears (first time only)
+3. Pick e.g. Hightechist → tap **יאללה לרוץ ▶** → game starts with shield active
+4. Run past ~50m → enter Florentin — banner "פלורנטין"
+5. Continue — when a landmark spawns, a toast like "עברת ליד עזריאלי" appears
+6. Take 2 hits → 1 heart remaining → red heartbeat border kicks in
+7. Die → Game Over shows your character + perk + missions progressed
+8. From menu → tap the character card → Character Select with **← ביטול** available

@@ -1,6 +1,7 @@
 export type SkinId =
   | "tlv_runner"
   | "hightechist"
+  | "blogger"
   | "surfer"
   | "tourist"
   | "barista"
@@ -29,11 +30,13 @@ export type SkinDef = {
   name: string;
   description: string;
   perkLabel: string;
+  /** Headline pitch shown in character selection. */
+  tagline?: string;
   perk: SkinPerk;
   price: number;
   colors: SkinColors;
   hat?: "cap" | "beanie" | "visor" | "sun" | "crown" | "none";
-  prop?: "headphones" | "coffee" | "camera" | "surfboard" | "bag" | "neon" | "none";
+  prop?: "headphones" | "coffee" | "camera" | "surfboard" | "bag" | "neon" | "phone" | "none";
 };
 
 export const SKINS: SkinDef[] = [
@@ -56,10 +59,11 @@ export const SKINS: SkinDef[] = [
   {
     id: "hightechist",
     name: "הייטקיסט",
-    description: "חולצת חברה, מק־בוק, קפה ביד.",
+    description: "לבוש מודרני, תיק לפטופ, נעליים קלות.",
+    tagline: "הייטקיסט — חד, מהיר, ותמיד עם גיבוי בענן.",
     perkLabel: "🛡 מתחיל עם מגן",
     perk: { kind: "start_shield" },
-    price: 120,
+    price: 0,
     colors: {
       shirt: "#0ea5e9",
       pants: "#0f172a",
@@ -67,15 +71,33 @@ export const SKINS: SkinDef[] = [
       hair: "#3b2a1d",
       accent: "#f8fafc",
     },
-    prop: "coffee",
+    prop: "bag",
+  },
+  {
+    id: "blogger",
+    name: "בלוגרית",
+    description: "סטייל צבעוני, טלפון ביד, אנרגיה חברתית.",
+    tagline: "בלוגרית — הופכת כל ריצה לסטורי ויראלי.",
+    perkLabel: "🪙 +25% מטבעות",
+    perk: { kind: "more_coins", multiplier: 1.25 },
+    price: 0,
+    colors: {
+      shirt: "#f472b6",
+      pants: "#fef3c7",
+      skin: "#e7c4a3",
+      hair: "#6b3e1a",
+      accent: "#fbcfe8",
+    },
+    prop: "phone",
   },
   {
     id: "surfer",
     name: "גולש",
-    description: "ישר מהים של גורדון.",
+    description: "לבוש חוף, משקפי שמש, אווירת ים.",
+    tagline: "גולש — זורם עם העיר וקופץ מעל כל מכשול.",
     perkLabel: "↑ קפיצה גבוהה ב-20%",
     perk: { kind: "high_jump", multiplier: 1.2 },
-    price: 150,
+    price: 0,
     colors: {
       shirt: "#22d3ee",
       pants: "#fef3c7",
@@ -172,8 +194,34 @@ export const SKINS: SkinDef[] = [
   },
 ];
 
+/** Free starter characters offered in the character-select screen. */
+export const STARTER_CHARACTERS: SkinId[] = ["hightechist", "blogger", "surfer"];
+
 export const DEFAULT_SKIN: SkinId = "tlv_runner";
 
 export function getSkin(id: SkinId): SkinDef {
   return SKINS.find((s) => s.id === id) ?? SKINS[0];
+}
+
+export function skinEmoji(id: SkinId): string {
+  switch (id) {
+    case "hightechist":
+      return "💻";
+    case "blogger":
+      return "📱";
+    case "surfer":
+      return "🏄";
+    case "tourist":
+      return "📸";
+    case "barista":
+      return "☕";
+    case "delivery":
+      return "🛵";
+    case "cyber":
+      return "🤖";
+    case "king":
+      return "👑";
+    default:
+      return "🏃";
+  }
 }

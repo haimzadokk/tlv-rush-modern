@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { survivalTitle } from "@/game/titles";
+import { getSkin, skinEmoji, type SkinId } from "@/game/skins";
 import type { RunStats } from "@/game/types";
 
 type Achievement = { id: string; label: string; emoji: string };
@@ -10,6 +11,8 @@ type Props = {
   isNewBest: boolean;
   shareCopied: boolean;
   newAchievements: Achievement[];
+  character: SkinId;
+  missionsProgressed: number;
   onReplay: () => void;
   onShare: () => void;
   onMenu: () => void;
@@ -23,6 +26,8 @@ export function GameOver({
   isNewBest,
   shareCopied,
   newAchievements,
+  character,
+  missionsProgressed,
   onReplay,
   onShare,
   onMenu,
@@ -30,6 +35,7 @@ export function GameOver({
   onShop,
 }: Props) {
   const title = survivalTitle(runStats.score);
+  const skin = getSkin(character);
   const [shown, setShown] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setShown(true), 60);
@@ -88,6 +94,31 @@ export function GameOver({
           <Stat label="אזורים" value={runStats.zonesVisited} />
           <Stat label="🔥 Combo שיא" value={runStats.highestCombo} />
           <Stat label="😅 Near Miss" value={runStats.nearMisses} />
+        </div>
+
+        {/* Character + missions strip */}
+        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-2.5 text-right">
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl ring-1 ring-white/15"
+            style={{
+              background: `linear-gradient(135deg, ${skin.colors.shirt}, ${skin.colors.accent})`,
+            }}
+          >
+            {skinEmoji(character)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase tracking-wider text-white/45">רצת עם</div>
+            <div className="text-sm font-black text-white truncate">{skin.name}</div>
+            <div className="text-[11px] text-amber-300/90 truncate">{skin.perkLabel}</div>
+          </div>
+          {missionsProgressed > 0 && (
+            <div className="flex flex-col items-center rounded-xl bg-fuchsia-500/20 px-2.5 py-1.5">
+              <div className="text-base font-black text-fuchsia-200 leading-none">
+                +{missionsProgressed}
+              </div>
+              <div className="text-[9px] uppercase tracking-wider text-fuchsia-200/80">משימות</div>
+            </div>
+          )}
         </div>
 
         {newAchievements.length > 0 && (

@@ -12,8 +12,25 @@ type Props = {
 };
 
 export function GameHUD({ hearts, score, coinsHUD, zoneName, power, combo, onPause }: Props) {
+  const lowHearts = hearts === 1;
   return (
     <>
+      {/* Heartbeat warning frame when only one heart is left */}
+      {lowHearts && (
+        <>
+          <div
+            className="pointer-events-none absolute inset-0 z-[5] border-[3px] border-red-500"
+            style={{
+              animation: "tlv-heartbeat 0.9s ease-in-out infinite",
+              boxShadow: "inset 0 0 60px rgba(239,68,68,0.35)",
+            }}
+          />
+          <style>{`@keyframes tlv-heartbeat {
+            0%, 100% { opacity: 0.35 }
+            50% { opacity: 0.95 }
+          }`}</style>
+        </>
+      )}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between p-3">
         <div className="flex flex-col gap-1.5">
           <div className="flex gap-1.5 rounded-full bg-black/45 px-3 py-1.5 backdrop-blur-sm">

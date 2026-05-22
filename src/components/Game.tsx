@@ -7,6 +7,7 @@ import { GameOver } from "./GameOver";
 import { GamePause } from "./GamePause";
 import { Tutorial } from "./Tutorial";
 import { LegendPanel } from "./LegendPanel";
+import { CharacterSelect } from "./CharacterSelect";
 import {
   readNumber,
   writeNumber,
@@ -25,8 +26,17 @@ import {
   type MissionsState,
   type MissionId,
 } from "@/game/missions";
-import { SKINS, getSkin, DEFAULT_SKIN, type SkinId, type SkinDef } from "@/game/skins";
+import {
+  SKINS,
+  getSkin,
+  DEFAULT_SKIN,
+  STARTER_CHARACTERS,
+  type SkinId,
+  type SkinDef,
+} from "@/game/skins";
 import { ZONES, zoneForDistance } from "@/game/zones";
+import { LANDMARKS, pickLandmarkFor } from "@/game/landmarks";
+import type { LandmarkKind } from "@/game/types";
 import {
   sfxJumpDodge,
   sfxDuckDodge,
@@ -117,17 +127,23 @@ export function Game() {
 
   const [best, setBest] = useState<number>(() => readNumber(storageKeys.best, 0));
   const [walletCoins, setWalletCoins] = useState<number>(() => readNumber(storageKeys.coins, 0));
-  const [ownedSkins, setOwnedSkins] = useState<SkinId[]>(() =>
-    readJSON<SkinId[]>(storageKeys.ownedSkins, [DEFAULT_SKIN]),
-  );
+  const [ownedSkins, setOwnedSkins] = useState<SkinId[]>(() => {
+    const stored = readJSON<SkinId[]>(storageKeys.ownedSkins, [DEFAULT_SKIN]);
+    return Array.from(new Set([...stored, DEFAULT_SKIN, ...STARTER_CHARACTERS]));
+  });
   const [selectedSkin, setSelectedSkin] = useState<SkinId>(
     () => readString(storageKeys.selectedSkin, DEFAULT_SKIN) as SkinId,
+  );
+  const [characterChosen, setCharacterChosen] = useState<boolean>(
+    () => readString(storageKeys.characterChosen, "") === "1",
   );
   const [missions, setMissions] = useState<MissionsState>(() => loadMissions());
 
   const [runStats, setRunStats] = useState<RunStats | null>(null);
   const [newAchievements, setNewAchievements] = useState<AchievementId[]>([]);
+  const [missionsProgressed, setMissionsProgressed] = useState(0);
   const [isNewBest, setIsNewBest] = useState(false);
+  const [runCharacter, setRunCharacter] = useState<SkinId>(selectedSkin);
 
   const [shareCopied, setShareCopied] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
@@ -466,17 +482,25 @@ export function Game() {
 
     const spawnBuilding = (forceAmPm = false) => {
       const side: -1 | 1 = Math.random() < 0.5 ? -1 : 1;
-      const palette = ZONES[g.zoneIndex].buildingPalette;
+      const zone = ZONES[g.zoneIndex];
+      const palette = zone.buildingPalette;
       const color = palette[Math.floor(Math.random() * palette.length)];
+      // ~1 in 7 buildings becomes an iconic landmark, when the zone offers any.
+      let landmark: LandmarkKind | undefined;
+      if (!forceAmPm && Math.random() < 0.16) {
+        landmark = pickLandmarkFor(zone.id) ?? undefined;
+      }
+      const info = landmark ? LANDMARKS[landmark] : null;
       g.buildings.push({
         side,
         z: 0,
-        height: 0.35 + Math.random() * 0.45,
-        width: 0.55 + Math.random() * 0.35,
+        height: (0.35 + Math.random() * 0.45) * (info ? info.heightScale : 1),
+        width: (0.55 + Math.random() * 0.35) * (info ? info.widthScale : 1),
         color,
         isAmPm: forceAmPm,
         seed: Math.random(),
         windowSeed: Math.random(),
+        landmark,
       });
     };
 
@@ -540,7 +564,7 @@ export function Game() {
       walletRef.current = newWallet;
       writeNumber(storageKeys.coins, newWallet);
 
-      const { state: nextMissions } = applyRunStats(missionsRef.current, {
+      const { state: nextMissions, newlyCompleted } = applyRunStats(missionsRef.current, {
         meters: finalMeters,
         coins: finalCoins,
         iceCreams: finalIce,
@@ -557,6 +581,8 @@ export function Game() {
       saveMissions(nextMissions);
       missionsRef.current = nextMissions;
       setMissions({ ...nextMissions });
+      setMissionsProgressed(newlyCompleted.length);
+      setRunCharacter(selectedSkinRef.current);
 
       const achState = loadAchievements();
       const { newlyUnlocked, state: nextAch } = applyRunForAchievements(achState, {
@@ -690,7 +716,14 @@ export function Game() {
       const baseStep = g.speed * dt * 0.18;
       for (const o of g.obstacles) o.z += baseStep * (0.55 + o.z * 1.15);
       for (const p of g.pickups) p.z += baseStep * (0.55 + p.z * 1.15);
-      for (const b of g.buildings) b.z += g.speed * dt * 0.12 * (0.6 + b.z * 0.9);
+      for (const b of g.buildings) {
+        b.z += g.speed * dt * 0.12 * (0.6 + b.z * 0.9);
+        if (b.landmark && !b.announced && b.z >= 0.55) {
+          b.announced = true;
+          const info = LANDMARKS[b.landmark];
+          g.floats.push({ x: 0, y: -40, text: info.toast, color: "#22d3ee", t: 1800 });
+        }
+      }
 
       // magnet pulls coins
       if (g.magnetT > 0) {
@@ -1169,6 +1202,10 @@ export function Game() {
         const buildingTop = horizonY - buildingH * 0.4 + (h - horizonY) * t - buildingH;
         const left = b.side === -1 ? x - buildingW : x;
         const top = buildingTop;
+        if (b.landmark) {
+          drawLandmark(b, left, top, buildingW, buildingH);
+          return;
+        }
         ctx.fillStyle = b.color;
         ctx.fillRect(left, top, buildingW, buildingH + 100);
         const shade = ctx.createLinearGradient(left, 0, left + buildingW, 0);
@@ -1238,6 +1275,267 @@ export function Game() {
         ctx.strokeStyle = "rgba(0,0,0,0.35)";
         ctx.lineWidth = 1;
         ctx.strokeRect(left, top, buildingW, buildingH + 100);
+      }
+
+      function landmarkLitWindows(
+        left: number,
+        top: number,
+        bw: number,
+        bh: number,
+        seed: number,
+        cols: number,
+      ) {
+        ctx.fillStyle = "rgba(255,220,140,0.85)";
+        const rows = Math.max(3, Math.floor(bh / 22));
+        const wW = bw / (cols * 2);
+        const wH = Math.max(3, bh / (rows * 2.3));
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const sd = seed * 100 + r * 7 + c * 3;
+            if ((sd | 0) % 3 === 0) continue;
+            ctx.fillRect(left + wW + c * (wW * 2), top + bh * 0.08 + r * (wH * 2.2), wW, wH);
+          }
+        }
+      }
+
+      function drawLandmark(b: Building, left: number, top: number, bw: number, bh: number) {
+        const cx = left + bw / 2;
+        const groundY = top + bh + 100;
+        switch (b.landmark) {
+          case "azrieli_round": {
+            // Cylindrical glass tower with curved top
+            const grad = ctx.createLinearGradient(left, 0, left + bw, 0);
+            grad.addColorStop(0, "#7ea1c9");
+            grad.addColorStop(0.5, "#dbe7f5");
+            grad.addColorStop(1, "#5b7fa8");
+            ctx.fillStyle = grad;
+            roundRect(ctx, left, top, bw, bh + 100, bw * 0.45);
+            ctx.fill();
+            // Vertical mullions
+            ctx.strokeStyle = "rgba(0,0,0,0.25)";
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 6; i++) {
+              ctx.beginPath();
+              ctx.moveTo(left + (bw * i) / 6, top + bh * 0.1);
+              ctx.lineTo(left + (bw * i) / 6, groundY);
+              ctx.stroke();
+            }
+            landmarkLitWindows(
+              left + bw * 0.08,
+              top + bh * 0.2,
+              bw * 0.84,
+              bh * 0.7,
+              b.windowSeed,
+              4,
+            );
+            // Crown spire
+            ctx.fillStyle = "#c4d4e8";
+            ctx.fillRect(cx - 2, top - bh * 0.06, 4, bh * 0.08);
+            break;
+          }
+          case "azrieli_triangle": {
+            // Triangular tower (peak top)
+            ctx.fillStyle = b.color;
+            ctx.beginPath();
+            ctx.moveTo(left, groundY);
+            ctx.lineTo(cx, top);
+            ctx.lineTo(left + bw, groundY);
+            ctx.closePath();
+            ctx.fillStyle = "#5b7fa8";
+            ctx.fill();
+            // Glass sheen
+            const g2 = ctx.createLinearGradient(left, top, left + bw, top);
+            g2.addColorStop(0, "rgba(255,255,255,0.0)");
+            g2.addColorStop(0.5, "rgba(255,255,255,0.25)");
+            g2.addColorStop(1, "rgba(0,0,0,0.2)");
+            ctx.fillStyle = g2;
+            ctx.beginPath();
+            ctx.moveTo(left, groundY);
+            ctx.lineTo(cx, top);
+            ctx.lineTo(left + bw, groundY);
+            ctx.closePath();
+            ctx.fill();
+            // Window strips
+            ctx.strokeStyle = "rgba(255,220,140,0.55)";
+            ctx.lineWidth = 1;
+            const steps = 10;
+            for (let i = 1; i < steps; i++) {
+              const yy = top + (bh * i) / steps;
+              const half = ((cx - left) * (steps - i)) / steps;
+              ctx.beginPath();
+              ctx.moveTo(cx - half * 0.85, yy);
+              ctx.lineTo(cx + half * 0.85, yy);
+              ctx.stroke();
+            }
+            break;
+          }
+          case "azrieli_square": {
+            // Rectangular glass tower with crown
+            ctx.fillStyle = "#6f93bc";
+            ctx.fillRect(left, top, bw, bh + 100);
+            const g3 = ctx.createLinearGradient(left, 0, left + bw, 0);
+            g3.addColorStop(0, "rgba(255,255,255,0.0)");
+            g3.addColorStop(0.5, "rgba(255,255,255,0.25)");
+            g3.addColorStop(1, "rgba(0,0,0,0.25)");
+            ctx.fillStyle = g3;
+            ctx.fillRect(left, top, bw, bh + 100);
+            // Crown
+            ctx.fillStyle = "#3a536e";
+            ctx.fillRect(left - 2, top, bw + 4, 6);
+            landmarkLitWindows(
+              left + bw * 0.08,
+              top + bh * 0.15,
+              bw * 0.84,
+              bh * 0.75,
+              b.windowSeed,
+              5,
+            );
+            break;
+          }
+          case "migdal_shalom": {
+            // Classic boxy skyscraper, beige with strong verticals
+            ctx.fillStyle = "#d8c9a8";
+            ctx.fillRect(left, top, bw, bh + 100);
+            ctx.strokeStyle = "rgba(0,0,0,0.35)";
+            ctx.lineWidth = 1.5;
+            const verts = 6;
+            for (let i = 1; i < verts; i++) {
+              ctx.beginPath();
+              ctx.moveTo(left + (bw * i) / verts, top);
+              ctx.lineTo(left + (bw * i) / verts, groundY);
+              ctx.stroke();
+            }
+            // Top antenna
+            ctx.fillStyle = "#7c6a4f";
+            ctx.fillRect(cx - 1.5, top - bh * 0.12, 3, bh * 0.12);
+            landmarkLitWindows(
+              left + bw * 0.05,
+              top + bh * 0.18,
+              bw * 0.9,
+              bh * 0.7,
+              b.windowSeed,
+              6,
+            );
+            break;
+          }
+          case "dizengoff_center": {
+            // Multi-tone irregular mall with signage
+            ctx.fillStyle = "#3a3a44";
+            ctx.fillRect(left, top + bh * 0.25, bw, bh * 0.75 + 100);
+            // Upper block
+            ctx.fillStyle = "#5b5b6a";
+            ctx.fillRect(left + bw * 0.1, top, bw * 0.55, bh * 0.4);
+            // Glass strip
+            ctx.fillStyle = "#22d3ee";
+            ctx.globalAlpha = 0.55;
+            ctx.fillRect(left, top + bh * 0.55, bw, bh * 0.12);
+            ctx.globalAlpha = 1;
+            // Signage
+            ctx.fillStyle = "#fde047";
+            ctx.font = `bold ${Math.max(8, bw * 0.12)}px system-ui`;
+            ctx.textAlign = "center";
+            ctx.fillText("Dizengoff", cx, top + bh * 0.3);
+            ctx.fillStyle = "#f472b6";
+            ctx.fillText("Center", cx, top + bh * 0.42);
+            // Storefront lights
+            for (let i = 0; i < 5; i++) {
+              ctx.fillStyle = ["#fde047", "#22d3ee", "#f472b6"][i % 3];
+              ctx.fillRect(
+                left + 6 + (i * (bw - 12)) / 5,
+                top + bh * 0.78,
+                (bw - 12) / 8,
+                bh * 0.06,
+              );
+            }
+            break;
+          }
+          case "menorah_hall": {
+            // Rounded arena dome
+            ctx.fillStyle = "#5e6770";
+            ctx.beginPath();
+            ctx.ellipse(cx, top + bh, bw * 0.55, bh * 0.65, 0, Math.PI, 0);
+            ctx.fill();
+            // Base
+            ctx.fillRect(left, top + bh, bw, 100);
+            // Highlights
+            ctx.strokeStyle = "rgba(255,255,255,0.25)";
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 6; i++) {
+              const a = Math.PI + (Math.PI * i) / 6;
+              ctx.beginPath();
+              ctx.moveTo(cx + Math.cos(a) * bw * 0.55, top + bh + Math.sin(a) * bh * 0.65);
+              ctx.lineTo(cx, top + bh);
+              ctx.stroke();
+            }
+            // Marquee
+            ctx.fillStyle = "#fbbf24";
+            ctx.fillRect(left + bw * 0.15, top + bh - 4, bw * 0.7, 8);
+            break;
+          }
+          case "kirya": {
+            // Cluster of clean modern boxes
+            ctx.fillStyle = "#7a8794";
+            ctx.fillRect(left, top + bh * 0.15, bw * 0.55, bh * 0.85 + 100);
+            ctx.fillStyle = "#8e9aa6";
+            ctx.fillRect(left + bw * 0.55, top + bh * 0.35, bw * 0.45, bh * 0.65 + 100);
+            ctx.fillStyle = "#5b6773";
+            ctx.fillRect(left + bw * 0.4, top, bw * 0.25, bh * 0.6);
+            landmarkLitWindows(
+              left + bw * 0.02,
+              top + bh * 0.3,
+              bw * 0.5,
+              bh * 0.65,
+              b.windowSeed,
+              4,
+            );
+            landmarkLitWindows(
+              left + bw * 0.57,
+              top + bh * 0.45,
+              bw * 0.4,
+              bh * 0.5,
+              b.windowSeed * 1.3,
+              3,
+            );
+            break;
+          }
+          case "yafo_clock": {
+            // Stone tower with clock face
+            ctx.fillStyle = "#d4b896";
+            ctx.fillRect(left, top + bh * 0.05, bw, bh + 95);
+            ctx.fillStyle = "#a8916f";
+            // Stone courses
+            for (let i = 0; i < 6; i++) {
+              ctx.fillRect(left, top + bh * 0.05 + i * (bh / 6), bw, 1);
+            }
+            // Clock face
+            ctx.fillStyle = "#fef3c7";
+            ctx.beginPath();
+            ctx.arc(cx, top + bh * 0.3, bw * 0.32, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#3a2418";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            // Clock hands
+            ctx.beginPath();
+            ctx.moveTo(cx, top + bh * 0.3);
+            ctx.lineTo(cx, top + bh * 0.18);
+            ctx.moveTo(cx, top + bh * 0.3);
+            ctx.lineTo(cx + bw * 0.18, top + bh * 0.3);
+            ctx.stroke();
+            // Dome top
+            ctx.fillStyle = "#3a7ca5";
+            ctx.beginPath();
+            ctx.arc(cx, top + bh * 0.05, bw * 0.35, Math.PI, 0);
+            ctx.fill();
+            break;
+          }
+        }
+        // Edge outline shared by all
+        ctx.strokeStyle = "rgba(0,0,0,0.4)";
+        ctx.lineWidth = 1;
+        if (b.landmark !== "menorah_hall" && b.landmark !== "azrieli_triangle") {
+          ctx.strokeRect(left, top, bw, bh + 100);
+        }
       }
 
       function drawPlayer() {
@@ -2151,11 +2449,42 @@ export function Game() {
     }
   };
 
-  const startRun = useCallback(() => {
+  const actuallyStartRun = useCallback(() => {
     setRunId((r) => r + 1);
     viewRef.current = "playing";
     setView("playing");
     startMusic();
+  }, []);
+
+  // From the menu Start button: detour to character select on first ever run.
+  const handlePlayPressed = useCallback(() => {
+    if (!characterChosen) {
+      setView("character");
+    } else {
+      actuallyStartRun();
+    }
+  }, [characterChosen, actuallyStartRun]);
+
+  const openCharacterSelect = useCallback(() => {
+    setView("character");
+  }, []);
+
+  const confirmCharacter = useCallback(
+    (id: SkinId) => {
+      setSelectedSkin(id);
+      writeString(storageKeys.selectedSkin, id);
+      writeString(storageKeys.selectedCharacter, id);
+      if (!characterChosen) {
+        setCharacterChosen(true);
+        writeString(storageKeys.characterChosen, "1");
+      }
+      actuallyStartRun();
+    },
+    [actuallyStartRun, characterChosen],
+  );
+
+  const cancelCharacterSelect = useCallback(() => {
+    setView("menu");
   }, []);
 
   const finishTutorial = useCallback(() => {
@@ -2190,17 +2519,28 @@ export function Game() {
           selectedSkin={selectedSkin}
           walletCoins={walletCoins}
           best={best}
-          onPlay={startRun}
+          missions={missions}
+          onPlay={handlePlayPressed}
+          onChangeCharacter={openCharacterSelect}
           onShop={() => setView("shop")}
           onMissions={() => setView("missions")}
           onLegend={() => setShowLegend(true)}
         />
       )}
 
+      {view === "character" && (
+        <CharacterSelect
+          current={characterChosen ? selectedSkin : null}
+          hasPicked={characterChosen}
+          onConfirm={confirmCharacter}
+          onCancel={cancelCharacterSelect}
+        />
+      )}
+
       {view === "paused" && (
         <GamePause
           onResume={() => setGameView("playing")}
-          onRestart={startRun}
+          onRestart={actuallyStartRun}
           onMenu={() => setView("menu")}
           onLegend={() => setShowLegend(true)}
         />
@@ -2212,6 +2552,8 @@ export function Game() {
           best={best}
           isNewBest={isNewBest}
           shareCopied={shareCopied}
+          character={runCharacter}
+          missionsProgressed={missionsProgressed}
           newAchievements={
             newAchievements.map((id) => achievementById(id)).filter(Boolean) as {
               id: string;
@@ -2219,7 +2561,7 @@ export function Game() {
               emoji: string;
             }[]
           }
-          onReplay={startRun}
+          onReplay={actuallyStartRun}
           onShare={handleShare}
           onMenu={() => setView("menu")}
           onMissions={() => setView("missions")}
