@@ -19,6 +19,41 @@ function ctx(): AudioContext | null {
   return _ctx;
 }
 
+// Global audio primer: browsers refuse to resume an AudioContext until the
+// user has interacted with the page (autoplay policy). We wait for the very
+// first user gesture anywhere on the document, then resume the context so
+// menu music can start on the home screen.
+if (typeof window !== "undefined") {
+  const prime = () => {
+    if (_ctx && _ctx.state === "suspended") _ctx.resume().catch(() => {});
+  };
+  const opts = { once: true, capture: true, passive: true } as AddEventListenerOptions;
+  window.addEventListener("pointerdown", prime, opts);
+  window.addEventListener("touchstart", prime, opts);
+  window.addEventListener("keydown", prime, opts);
+}
+
+/** Run cb as soon as the audio context is actually running. If the context
+ * is currently suspended (typical on first load before any user gesture),
+ * waits for either the resume promise to flip state or a statechange event. */
+function whenRunning(c: AudioContext, cb: () => void) {
+  if (c.state === "running") {
+    cb();
+    return;
+  }
+  let done = false;
+  const fire = () => {
+    if (done) return;
+    if (c.state !== "running") return;
+    done = true;
+    c.removeEventListener("statechange", onChange);
+    cb();
+  };
+  const onChange = () => fire();
+  c.addEventListener("statechange", onChange);
+  c.resume().then(fire).catch(() => {});
+}
+
 let masterGain: GainNode | null = null;
 let schedulerId: number | null = null;
 let nextNoteTime = 0;
@@ -164,24 +199,29 @@ function scheduler() {
   schedulerId = window.setTimeout(scheduler, LOOKAHEAD_MS);
 }
 
+let startRequested = false;
+
 export function startMusic() {
   if (running) return;
   const c = ctx();
   if (!c) return;
-  // try to resume if browser suspended the context
-  if (c.state === "suspended") c.resume().catch(() => {});
-  if (!masterGain) {
-    masterGain = c.createGain();
-    masterGain.gain.value = 0.55;
-    masterGain.connect(c.destination);
-  }
-  running = true;
-  stepIndex = 0;
-  nextNoteTime = c.currentTime + 0.08;
-  scheduler();
+  startRequested = true;
+  whenRunning(c, () => {
+    if (!startRequested || running) return;
+    if (!masterGain) {
+      masterGain = c.createGain();
+      masterGain.gain.value = 0.55;
+      masterGain.connect(c.destination);
+    }
+    running = true;
+    stepIndex = 0;
+    nextNoteTime = c.currentTime + 0.08;
+    scheduler();
+  });
 }
 
 export function stopMusic() {
+  startRequested = false;
   running = false;
   if (schedulerId !== null) {
     clearTimeout(schedulerId);
@@ -346,23 +386,29 @@ function menuScheduler() {
   menuSchedulerId = window.setTimeout(menuScheduler, LOOKAHEAD_MS);
 }
 
+let menuStartRequested = false;
+
 export function startMenuMusic() {
   if (menuRunning) return;
   const c = ctx();
   if (!c) return;
-  if (c.state === "suspended") c.resume().catch(() => {});
-  if (!menuMasterGain) {
-    menuMasterGain = c.createGain();
-    menuMasterGain.gain.value = 0.45;
-    menuMasterGain.connect(c.destination);
-  }
-  menuRunning = true;
-  menuStepIndex = 0;
-  menuNextNoteTime = c.currentTime + 0.08;
-  menuScheduler();
+  menuStartRequested = true;
+  whenRunning(c, () => {
+    if (!menuStartRequested || menuRunning) return;
+    if (!menuMasterGain) {
+      menuMasterGain = c.createGain();
+      menuMasterGain.gain.value = 0.45;
+      menuMasterGain.connect(c.destination);
+    }
+    menuRunning = true;
+    menuStepIndex = 0;
+    menuNextNoteTime = c.currentTime + 0.08;
+    menuScheduler();
+  });
 }
 
 export function stopMenuMusic() {
+  menuStartRequested = false;
   menuRunning = false;
   if (menuSchedulerId !== null) {
     clearTimeout(menuSchedulerId);

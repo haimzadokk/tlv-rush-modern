@@ -95,7 +95,7 @@ export function GameMenu({
         </svg>
       </div>
 
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-start px-5 pb-5 pt-6">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pb-8 pt-6">
         {/* Title block */}
         <div className="mb-1 text-center">
           <div className="text-[10px] font-bold uppercase tracking-[0.4em] text-cyan-300/70">
