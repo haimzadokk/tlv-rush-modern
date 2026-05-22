@@ -3,6 +3,8 @@ import type { LandmarkKind } from "./types";
 export type LandmarkInfo = {
   kind: LandmarkKind;
   hebrew: string;
+  /** Short label rendered on/under the landmark itself. */
+  label: string;
   /** Banner text shown when the landmark passes the player. */
   toast: string;
   /** Tower height multiplier (0..1+). */
@@ -15,27 +17,31 @@ export const LANDMARKS: Record<LandmarkKind, LandmarkInfo> = {
   azrieli_round: {
     kind: "azrieli_round",
     hebrew: "עזריאלי העגול",
-    toast: "עברת ליד עזריאלי",
+    label: "מגדלי עזריאלי",
+    toast: "עברת ליד מגדלי עזריאלי",
     heightScale: 1.55,
     widthScale: 0.85,
   },
   azrieli_triangle: {
     kind: "azrieli_triangle",
     hebrew: "עזריאלי המשולש",
-    toast: "עברת ליד עזריאלי",
+    label: "מגדלי עזריאלי",
+    toast: "עברת ליד מגדלי עזריאלי",
     heightScale: 1.4,
     widthScale: 1.0,
   },
   azrieli_square: {
     kind: "azrieli_square",
     hebrew: "עזריאלי המרובע",
-    toast: "עברת ליד עזריאלי",
+    label: "מגדלי עזריאלי",
+    toast: "עברת ליד מגדלי עזריאלי",
     heightScale: 1.5,
     widthScale: 0.95,
   },
   migdal_shalom: {
     kind: "migdal_shalom",
     hebrew: "מגדל שלום",
+    label: "מגדל שלום",
     toast: "מגדל שלום באופק",
     heightScale: 1.35,
     widthScale: 0.95,
@@ -43,20 +49,23 @@ export const LANDMARKS: Record<LandmarkKind, LandmarkInfo> = {
   dizengoff_center: {
     kind: "dizengoff_center",
     hebrew: "דיזנגוף סנטר",
+    label: "דיזנגוף סנטר",
     toast: "דיזנגוף סנטר באופק",
     heightScale: 0.85,
     widthScale: 1.4,
   },
   menorah_hall: {
     kind: "menorah_hall",
-    hebrew: "היכל הספורט",
-    toast: "ההיכל באופק",
+    hebrew: "היכל מנורה",
+    label: "היכל הכדורסל מנורה",
+    toast: "היכל הכדורסל מנורה באופק",
     heightScale: 0.7,
     widthScale: 1.5,
   },
   kirya: {
     kind: "kirya",
     hebrew: "הקריה",
+    label: "הקריה",
     toast: "הקריה באופק",
     heightScale: 1.1,
     widthScale: 1.1,
@@ -64,7 +73,8 @@ export const LANDMARKS: Record<LandmarkKind, LandmarkInfo> = {
   yafo_clock: {
     kind: "yafo_clock",
     hebrew: "מגדל השעון",
-    toast: "מגדל השעון ביפו",
+    label: "מגדל השעון יפו",
+    toast: "עברת ליד מגדל השעון",
     heightScale: 1.15,
     widthScale: 0.55,
   },

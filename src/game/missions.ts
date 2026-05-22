@@ -193,9 +193,12 @@ function dateSeed(dateStr: string): number {
   return h >>> 0;
 }
 
-/** Choose 5 daily missions deterministically from the pool by date. */
-export function pickDailyMissions(dateStr: string): MissionId[] {
-  const shuffled = seededShuffle(MISSION_POOL, dateSeed(dateStr));
+/** Choose 5 daily missions deterministically from the pool by date.
+ * `exclude` lets the caller pull out the day's Daily Challenge so it doesn't
+ * appear twice (once as challenge, once as a regular daily). */
+export function pickDailyMissions(dateStr: string, exclude: MissionId[] = []): MissionId[] {
+  const pool = MISSION_POOL.filter((m) => !exclude.includes(m.id));
+  const shuffled = seededShuffle(pool, dateSeed(dateStr));
   return shuffled.slice(0, 5).map((m) => m.id);
 }
 
@@ -226,10 +229,11 @@ function todayKey(): string {
 
 function freshState(): MissionsState {
   const date = todayKey();
+  const challenge = pickDailyChallenge(date);
   return {
     date,
-    daily: pickDailyMissions(date),
-    challenge: pickDailyChallenge(date),
+    daily: pickDailyMissions(date, [challenge.id]),
+    challenge,
     progress: {},
     claimed: {},
     challengeClaimed: false,

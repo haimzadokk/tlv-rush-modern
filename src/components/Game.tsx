@@ -51,7 +51,7 @@ import {
   sfxDash,
   sfxPowerup,
 } from "@/game/sfx";
-import { startMusic, stopMusic } from "@/game/music";
+import { startMusic, stopMusic, startMenuMusic, stopMenuMusic } from "@/game/music";
 import { haptics } from "@/game/haptics";
 import {
   HEART_MAX,
@@ -199,6 +199,7 @@ export function Game() {
     coinCooldown: 0,
     powerupCooldown: 4000,
     buildingCooldown: 0,
+    forceLandmarkNextBuilding: false,
     hearts: HEART_MAX,
     score: 0,
     coins: 0,
@@ -382,10 +383,11 @@ export function Game() {
     g.zoneBannerT = 4200;
     g.zoneBannerName = ZONES[0].hebrew;
     g.zoneBannerSub = ZONES[0].subtitle;
-    g.spawnCooldown = 1800;
+    g.spawnCooldown = 3000;
     g.coinCooldown = 1500;
     g.powerupCooldown = 5000;
     g.buildingCooldown = 0;
+    g.forceLandmarkNextBuilding = true;
     g.iceCreamsRun = 0;
     g.dodgedRun = 0;
     g.dashesRun = 0;
@@ -487,8 +489,9 @@ export function Game() {
       const color = palette[Math.floor(Math.random() * palette.length)];
       // ~1 in 7 buildings becomes an iconic landmark, when the zone offers any.
       let landmark: LandmarkKind | undefined;
-      if (!forceAmPm && Math.random() < 0.16) {
+      if (!forceAmPm && (g.forceLandmarkNextBuilding || Math.random() < 0.3)) {
         landmark = pickLandmarkFor(zone.id) ?? undefined;
+        if (landmark) g.forceLandmarkNextBuilding = false;
       }
       const info = landmark ? LANDMARKS[landmark] : null;
       g.buildings.push({
@@ -670,6 +673,7 @@ export function Game() {
         g.zoneBannerT = 4200;
         g.zoneBannerName = z.hebrew;
         g.zoneBannerSub = z.subtitle;
+        g.forceLandmarkNextBuilding = true;
         sfxZoneChange();
         haptics.zone();
       }
@@ -1535,6 +1539,35 @@ export function Game() {
         ctx.lineWidth = 1;
         if (b.landmark !== "menorah_hall" && b.landmark !== "azrieli_triangle") {
           ctx.strokeRect(left, top, bw, bh + 100);
+        }
+        // Hebrew label so the player doesn't have to guess the landmark.
+        // Drawn only when close enough to be readable.
+        if (b.landmark && b.z > 0.28) {
+          const info = LANDMARKS[b.landmark];
+          const fontSize = Math.max(9, Math.min(15, bw * 0.16));
+          ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          const metrics = ctx.measureText(info.label);
+          const padX = 6;
+          const padY = 3;
+          const labelW = metrics.width + padX * 2;
+          const labelH = fontSize + padY * 2;
+          // Place above the building so it always reads against the sky.
+          const labelCY = top - labelH * 0.7;
+          const labelLeft = cx - labelW / 2;
+          // Background plate
+          ctx.fillStyle = "rgba(0,0,0,0.78)";
+          roundRect(ctx, labelLeft, labelCY - labelH / 2, labelW, labelH, 4);
+          ctx.fill();
+          // Accent border
+          ctx.strokeStyle = "rgba(34,211,238,0.85)";
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+          // Text
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(info.label, cx, labelCY);
+          ctx.textBaseline = "alphabetic";
         }
       }
 
@@ -2493,9 +2526,20 @@ export function Game() {
   }, []);
 
   useEffect(() => {
-    if (view === "playing") startMusic();
-    else stopMusic();
-    return () => stopMusic();
+    if (view === "playing") {
+      stopMenuMusic();
+      startMusic();
+    } else if (view === "menu" || view === "character") {
+      stopMusic();
+      startMenuMusic();
+    } else {
+      stopMusic();
+      stopMenuMusic();
+    }
+    return () => {
+      stopMusic();
+      stopMenuMusic();
+    };
   }, [view]);
 
   return (

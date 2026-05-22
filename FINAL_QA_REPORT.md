@@ -1,6 +1,52 @@
 # TLV Rush — Final QA Report
 
-This document covers the upgrades applied to TLV Rush in two consecutive passes (Modern Mobile Runner + Character Selection & Landmarks).
+This document covers the upgrades applied to TLV Rush across three consecutive passes (Modern Mobile Runner + Character Selection & Landmarks + Playtest-driven polish).
+
+---
+
+## Pass 3 — Playtest-driven polish
+
+Triggered by live playtest feedback on the deployed game. Five fixes:
+
+### 1. Grace period at run start
+- Initial `spawnCooldown` bumped from 1.8s → **3s** so the player has time to orient before the first obstacle appears.
+
+### 2. Daily Challenge no longer duplicates as a daily mission
+- `pickDailyMissions(dateStr, exclude)` now accepts an exclude list.
+- `freshState()` picks the challenge first, then picks the 5 daily missions from the remaining pool.
+- The 5 daily missions and the 1 Daily Challenge are now always distinct.
+
+### 3. Iconic landmarks much more visible
+- Per-building landmark chance raised from 16% → **30%**.
+- New `forceLandmarkNextBuilding` flag on `gameRef`. It's set:
+  - At run start — the player's very first big building will be a landmark.
+  - Every time a new zone is entered — every zone "introduces itself" with its signature landmark.
+- The flag self-clears the moment a landmark actually spawns, so it only forces *one* landmark per trigger.
+
+### 4. Hebrew labels on each landmark
+- New `label` field on `LandmarkInfo` and per-frame Hebrew text rendered above the building on a translucent black plate with a cyan accent stroke. Visible only when `z > 0.28` so it doesn't clutter the distant skyline.
+- Labels:
+  - מגדלי עזריאלי (all three Azrieli towers share the label)
+  - מגדל שלום
+  - דיזנגוף סנטר
+  - היכל הכדורסל מנורה
+  - הקריה
+  - מגדל השעון יפו
+- Toast text upgraded to match the labels exactly ("עברת ליד מגדלי עזריאלי", "היכל הכדורסל מנורה באופק", etc.).
+
+### 5. Menu music (synthwave-style)
+- New `startMenuMusic()` / `stopMenuMusic()` in `game/music.ts`.
+- Slower (86 BPM vs 124 BPM gameplay), moody chord progression (Am → G → F → E), sine bass + sawtooth pads + triangle arpeggio + soft hi-hat.
+- Has its own `menuMasterGain` so it can fade out independently of the gameplay music.
+- Game.tsx music effect now routes:
+  - `view === "playing"` → gameplay track
+  - `view === "menu" | "character"` → menu track
+  - anything else → silence
+
+### 6. Favicon
+- Inline SVG data-URI favicon: indigo rounded square with gold `T` + small cyan dot. No extra HTTP request, no file in `public/`. Fixes the 404 spotted in the deployed console.
+
+---
 
 ---
 
